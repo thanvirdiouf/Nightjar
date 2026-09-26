@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/android-env.sh"
+
+if [[ -n "${WINDOWS_ANDROID_SDK:-}" && -x "$WINDOWS_ANDROID_SDK/platform-tools/adb.exe" ]]; then
+  task_adb="$WINDOWS_ANDROID_SDK/platform-tools/adb.exe"
+  task_args=("$@")
+  task_command_index=0
+  while (( task_command_index < ${#task_args[@]} )); do
+    case "${task_args[$task_command_index]}" in
+      -s|-t|-H|-P|-L)
+        task_command_index=$((task_command_index + 2))
+        ;;
+      -d|-e|-a)
+        task_command_index=$((task_command_index + 1))
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+  # Windows adb needs Windows paths when reading locally built APKs.
+  case "${task_args[$task_command_index]:-}" in
+    install|install-multiple|install-multi-package)
+      for task_i in "${!task_args[@]}"; do
+        if (( task_i > task_command_index )) && [[ -f "${task_args[$task_i]}" ]]; then
+          task_args[$task_i]="$(wslpath -w "${task_args[$task_i]}")"
+        fi
+      done
+      ;;
+  esac
+  exec "$task_adb" "${task_args[@]}"
+fi
+exec "$ANDROID_HOME/platform-tools/adb" "$@"

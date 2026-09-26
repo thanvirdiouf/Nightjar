@@ -1,0 +1,24 @@
+# Android / Gradle generated files
+.gradle/
+.kotlin/
+**/build/
+.cxx/
+.externalNativeBuild/
+captures/
+*.apk
+*.aab
+
+# Local machine and IDE settings
+local.properties
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Private signing keys
+*.jks
+*.keystore
+keystore.properties
+
+# Local verification artifacts
+.local/
