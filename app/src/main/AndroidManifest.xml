@@ -14,7 +14,7 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
     <application android:name=".NightjarApplication" android:label="@string/app_name"
         android:theme="@style/Theme.Nightjar" android:icon="@drawable/ic_nightjar"
-        android:allowBackup="false" android:supportsRtl="true">
+        android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>

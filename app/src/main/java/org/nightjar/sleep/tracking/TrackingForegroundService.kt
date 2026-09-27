@@ -14,6 +14,7 @@ import org.nightjar.sleep.app
 import org.nightjar.sleep.core.*
 import org.nightjar.sleep.core.analysis.*
 import org.nightjar.sleep.core.sensors.*
+import org.nightjar.sleep.core.audio.NoiseRecorder
 import org.nightjar.sleep.core.storage.*
 import kotlin.math.max
 
@@ -22,6 +23,7 @@ class TrackingForegroundService : Service() {
     private val flushLock = Mutex()
     private val accumulator = SignalAccumulator()
     private var source: SleepSignalSource? = null
+    private var noiseRecorder: NoiseRecorder? = null
     private var session: SleepSession? = null
     private var ticker: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -63,15 +65,16 @@ class TrackingForegroundService : Service() {
                 foreground(mode)
                 classifier = SleepPhaseClassifier(AnalysisConfig(active.lowThreshold, active.highThreshold))
                 val previous = app.repository.dao.epochs(active.id)
-                history = previous.filter { it.phase != SleepPhase.UNKNOWN.name }.takeLast(4).map { it.intensity }.toMutableList()
+                history = previous.asReversed().takeWhile { it.phase != SleepPhase.UNKNOWN.name }.take(4).asReversed().map { it.intensity }.toMutableList()
                 epochCount = previous.size
                 epochStartElapsed = SystemClock.elapsedRealtime()
                 epochStartWall = max(System.currentTimeMillis(), previous.lastOrNull()?.let { it.startTime + it.durationMs } ?: active.startTime)
                 if (pendingStop) { initializing = false; finish(false); return@launch }
+                if (mode == SensingMode.MICROPHONE && settings.recordNoise) noiseRecorder = NoiseRecorder(this@TrackingForegroundService, app.repository.dao, active.id) { app.runtime.notice.value = it }
                 source = if (mode == SensingMode.ACCELEROMETER) AccelerometerSource(this@TrackingForegroundService, accumulator::add)
                     else MicrophoneSource(this@TrackingForegroundService, accumulator::add, { message ->
                         scope.launch { app.runtime.notice.value = message; finish(true, message) }
-                    })
+                    }, noiseRecorder?.let { recorder -> { pcm, rate -> recorder.accept(pcm, rate) } })
                 source!!.start()
                 wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Nightjar:Tracking").apply {
                     setReferenceCounted(false)
@@ -93,7 +96,8 @@ class TrackingForegroundService : Service() {
                         }
                     }
                 }
-                app.repository.pruneClips(app.settings.current.retentionDays)
+                runCatching { app.repository.pruneClips(app.settings.current.retentionDays) }
+                    .onFailure { app.runtime.notice.value = "Some expired recordings could not be removed." }
             } catch (e: Exception) {
                 initializing = false
                 finish(true, e.message ?: "Tracking failed.")
@@ -141,6 +145,8 @@ class TrackingForegroundService : Service() {
                     ticker?.cancel()
                     source?.close()
                     source = null
+                    noiseRecorder?.finish()
+                    noiseRecorder = null
                     flushEpoch(SystemClock.elapsedRealtime())
                     session?.let { app.repository.finish(it.id, System.currentTimeMillis(), interrupted) }
                 }
@@ -158,6 +164,7 @@ class TrackingForegroundService : Service() {
     }
     override fun onDestroy() {
         source?.close()
+        noiseRecorder?.close()
         ticker?.cancel()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         scope.cancel()

@@ -1,33 +1,29 @@
 # Implementation and verification plan
 
-The goal is the complete offline Android app in project-specs.md, implemented,
-built, installed, and tested on emulator-5554. This checklist records progress;
-an unchecked item remains required. Optional Wear OS and narrated meditation
-are stretch features, as specified in the original document.
+The goal remains the complete offline app in project-specs.md. Optional Wear OS
+and narration remain stretch features. The dedicated AVD is Nightjar_Test_API_36;
+its ADB serial may change between launches.
 
-- [ ] Kotlin/Compose Android project, pinned Gradle wrapper, Apache-2.0 license
-- [ ] Room sessions, epochs, noise events, tags and process-safe persistence
-- [ ] Accelerometer foreground tracking, notification, wake lock, stop/recovery
-- [ ] Causal live scoring, retrospective estimates, missing-data handling
-- [ ] Nightly metrics and stepped estimate chart; transparent score formula
-- [ ] Start/stop interface and permission handling
-- [ ] Exact deadline alarm, early wake window, duplicate prevention
-- [ ] Alarm playback, tone selection, volume ramp, dismiss and snooze
-- [ ] Boot/time-change alarm reconciliation
-- [ ] Microphone source and privacy disclosure
-- [ ] Opt-in candidate noise detection, local clips, playback and retention
-- [ ] Journal, weekly/monthly trends, sleep notes/tags and correlations
-- [ ] CSV/JSON export and local backup/restore
-- [ ] Original offline ambient sounds and timer/sleep-onset stopping
-- [ ] Settings, calibration, dark/light theme and accessible error/empty states
-- [ ] Analysis and alarm unit tests
-- [ ] Room/foreground-service/UI instrumented tests
-- [ ] Emulator runtime verification and corrections
-- [ ] Release build, FOSS dependency/asset audit and F-Droid build notes
+Implemented: Compose navigation, Room persistence, motion/microphone foreground
+tracking, live scoring, nightly metrics/chart, exact and early alarms, audio ramp,
+dismiss/snooze, local noise clips and retention, ambient playback, notes/tags,
+7/30-day trends, CSV/JSON exports, ZIP backup/restore, themes and sensitivity
+settings. Original assets, Apache-2.0 licensing, dependency locks and F-Droid
+preparation notes are included.
 
-Phone-only sleep phase labels must be clearly identified as unvalidated estimates.
-No fake results or placeholder actions should remain in the shipped app.
-Physical overnight microphone/accelerometer accuracy and vendor battery
-restrictions require real-device validation; emulator checks cannot establish those.
-Public forge hosting and F-Droid submission need an actual remote/release URL and
-are distribution steps, not automatically performed by this local build task.
+Verified so far: 20 unit tests, 11 core device tests, a separate report/trend/theme
+UI test, Android lint, and the optimized R8 release build. See VERIFICATION.md.
+
+Remaining work before the full completion audit:
+- [ ] Verify alarm reconciliation after boot and time changes.
+- [ ] Assert actual Doze state in the idle alarm test.
+- [ ] Exercise ambient timer expiry and sleep-onset stopping.
+- [ ] Test tracking recovery after a full process interruption.
+- [ ] Harden sound caching against rapid switching/interrupted generation.
+- [ ] Install and smoke-test the optimized release.
+- [ ] Complete the final requirement-by-requirement audit.
+
+Physical overnight sensitivity and vendor battery behavior require a real phone.
+Sleep phases remain unvalidated estimates. Source publishing, owner-controlled
+release signing, a public release tag and F-Droid submission are distribution
+steps that require real owner-supplied destinations/credentials.

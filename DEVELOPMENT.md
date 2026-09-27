@@ -1,57 +1,50 @@
 # Android development setup
 
-The source repository lives in Ubuntu WSL at /home/diouf/sleepProject.
-Build in Ubuntu and run the app on the Windows Android emulator.
+The repository lives in Ubuntu WSL at /home/diouf/sleepProject. Build with the
+Linux SDK and run with the Windows Android emulator.
 
-## Installed tools
+## Tools
 
-- Ubuntu: OpenJDK 21, Android command-line tools 22.0, Android platforms
-  36 and 37.0, Build Tools 36.0.0, and Platform Tools 37.0.1.
-- Linux SDK: /home/diouf/Android/Sdk.
-- Windows SDK: C:\Users\tandi\AppData\Local\Android\Sdk.
-- Windows emulator hardware acceleration: WHPX is usable.
-- Created AOSP Android 16 test device: SleepProject_API_36.
-- Verified running device: medium_phone, serial emulator-5554, Android 16 / API 36.
+OpenJDK 21; Android platform 36; Build Tools 36.0.0; Gradle wrapper 8.13.
+The user environment is loaded from ~/.config/sleepProject/android-env.sh:
 
-## Ubuntu environment
+- Linux SDK: /home/diouf/Android/Sdk
+- Windows SDK: C:\Users\tandi\AppData\Local\Android\Sdk
+- Windows emulator acceleration: WHPX
+- Dedicated test AVD: Nightjar_Test_API_36, AOSP Android 16 / API 36, Pixel 6a
+- Current serial when created: emulator-5556 (serials can change between launches)
 
-New Ubuntu terminal sessions load the Android environment automatically.
-For an existing terminal, run:
+The previous medium_phone AVD was deleted at the owner's request.
+SleepProject_API_36 remains as an unused earlier AOSP setup device.
+
+## Build and test
 
 ```bash
 cd /home/diouf/sleepProject
 source scripts/android-env.sh
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+./gradlew :app:assembleRelease
+./scripts/test-emulator
 ```
 
-Machine-specific paths are stored in ~/.config/sleepProject/android-env.sh.
-The local.properties file points Gradle at the Linux SDK and is ignored by Git.
+Start Nightjar_Test_API_36 from Android Studio's Device Manager before running
+the last command. The script locates the AVD by name, builds and installs both
+APKs, then runs AndroidJUnitRunner. It fails unless the runner reports success.
+Test logs are saved under the Git-ignored .local/verification directory.
 
-## Connect to the Windows emulator
-
-Start a device from Android Studio's Device Manager. Use the project adb
-helper from Ubuntu to reach the Windows adb server:
+## Windows ADB from Ubuntu
 
 ```bash
 ./scripts/adb devices -l
-./scripts/adb -s emulator-5554 shell getprop sys.boot_completed
+./scripts/adb -s emulator-5556 shell getprop sys.boot_completed
+./scripts/adb -s emulator-5556 install --no-incremental -r app/build/outputs/apk/debug/app-debug.apk
+./scripts/adb -s emulator-5556 shell am start -W -n org.nightjar.sleep/.MainActivity
 ```
 
-The helper converts local APK filenames to Windows paths during installation:
+The wrapper forwards to Windows adb and converts Linux APK paths with wslpath.
+Use the serial currently reported by adb rather than assuming 5556 forever.
 
-```bash
-./scripts/adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-The example APK path becomes available after the Android app project is created
-and built. The current repository contains the specification and setup helpers;
-the app itself has not been implemented yet.
-
-## Setup verification
-
-A separate diagnostic APK was compiled, dexed, packaged, aligned, and signed
-using the Linux SDK. It was installed on emulator-5554 and its Activity launched
-successfully. Its name in the emulator is Sleep Project Setup Check.
-
-Diagnostic build files live under ~/.cache/sleepProject and are outside the
-repository. This verified the SDK-to-emulator path; a Gradle app build will be
-verified after the app project is created. Gradle will use the project's wrapper.
+The initial setup diagnostic app was separate from Nightjar. Current verification
+uses the real Gradle app, its unit tests, and instrumented tests on the dedicated
+AOSP emulator. Release builds are optimized by R8 and remain unsigned until an
+owner-controlled signing key is supplied outside Git.

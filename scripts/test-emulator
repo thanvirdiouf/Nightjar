@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_dir"
+source scripts/android-env.sh
+selected=""
+while read -r serial state rest; do
+  if [[ "$state" == device && "$serial" == emulator-* ]]; then
+    name="$(./scripts/adb -s "$serial" emu avd name | tr -d '\r' | head -n 1)"
+    if [[ "$name" == Nightjar_Test_API_36 ]]; then selected="$serial"; break; fi
+  fi
+done < <(./scripts/adb devices | tr -d '\r')
+if [[ -z "$selected" ]]; then
+  echo "Start the dedicated Nightjar_Test_API_36 virtual device in Android Studio, then run this script again." >&2
+  exit 1
+fi
+if [[ "$(./scripts/adb -s "$selected" shell getprop sys.boot_completed | tr -d '\r')" != 1 ]]; then
+  echo "The test emulator is still booting. Run this script when it is ready." >&2
+  exit 1
+fi
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest --console=plain
+./scripts/adb -s "$selected" install --no-incremental -r app/build/outputs/apk/debug/app-debug.apk
+./scripts/adb -s "$selected" install --no-incremental -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+mkdir -p .local/verification
+log=".local/verification/device-tests-$(date -u +%Y%m%dT%H%M%SZ).log"
+./scripts/adb -s "$selected" shell am instrument -w -r org.nightjar.sleep.test/androidx.test.runner.AndroidJUnitRunner | tee "$log"
+if ! grep -Eq '^OK \([0-9]+ tests?\)' "$log"; then
+  echo "Device tests did not report success. See $log" >&2
+  exit 1
+fi

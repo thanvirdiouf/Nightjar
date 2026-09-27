@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -13,9 +15,12 @@ import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,10 +47,11 @@ private val LightColors = lightColorScheme(
     val notice by app.runtime.notice.collectAsStateWithLifecycle()
     val alarm by app.runtime.alarm.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val snackbars = remember { SnackbarHostState() }
-    var microphoneDisclosure by remember { mutableStateOf(false) }
-    var pendingStart by remember { mutableStateOf(false) }
+    var microphoneDisclosure by rememberSaveable { mutableStateOf(false) }
+    var pendingStart by rememberSaveable { mutableStateOf(false) }
     fun startService() {
         runCatching { ContextCompat.startForegroundService(context,
             Intent(context, TrackingForegroundService::class.java).setAction(TrackingForegroundService.START)) }
@@ -67,7 +73,13 @@ private val LightColors = lightColorScheme(
         if (permissions.isEmpty()) startService() else { pendingStart = true; requestPermissions.launch(permissions.toTypedArray()) }
     }
     val dark = settings.theme == "DARK" || (settings.theme == "SYSTEM" && isSystemInDarkTheme())
+    SideEffect {
+        (context as? MainActivity)?.enableEdgeToEdge(
+            statusBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = if (dark) SystemBarStyle.dark(0xFF1B2232.toInt()) else SystemBarStyle.light(0xFFF7F5FB.toInt(), 0xFFF7F5FB.toInt()))
+    }
     MaterialTheme(colorScheme = if (dark) DarkColors else LightColors) {
+        LaunchedEffect(page) { focusManager.clearFocus(); keyboard?.hide() }
         LaunchedEffect(notice) { notice?.let { snackbars.showSnackbar(it); app.runtime.notice.value = null } }
         LaunchedEffect(alarm.ringing) { (context as? MainActivity)?.showAlarmOnLockScreen(alarm.ringing) }
         val destinations = listOf("tonight" to Icons.Outlined.Bedtime, "journal" to Icons.AutoMirrored.Outlined.MenuBook,
@@ -96,7 +108,7 @@ private val LightColors = lightColorScheme(
                 }
             }
         ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
+            Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
                 when (page) {
                     "tonight" -> TonightScreen(app) {
                         if (app.settings.current.mode == SensingMode.MICROPHONE) microphoneDisclosure = true else permissionsAndStart()

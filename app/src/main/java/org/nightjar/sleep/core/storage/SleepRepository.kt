@@ -48,7 +48,8 @@ class SleepRepository(private val context: Context, private val database: SleepD
     }
     suspend fun pruneClips(retentionDays: Int, now: Long = System.currentTimeMillis()) {
         dao.expiredClips(now - retentionDays * 86_400_000L).forEach {
-            clipFile(it.clipPath)?.delete()
+            val file = clipFile(it.clipPath)
+            check(file == null || file.delete()) { "An expired recording could not be deleted." }
             dao.updateNoise(it.copy(clipPath = null))
         }
     }

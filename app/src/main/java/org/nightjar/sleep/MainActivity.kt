@@ -3,6 +3,8 @@ package org.nightjar.sleep
 import android.app.KeyguardManager
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,8 +28,13 @@ class MainActivity : ComponentActivity() {
         }
     }
     fun showAlarmOnLockScreen(ringing: Boolean) {
-        setShowWhenLocked(ringing)
-        setTurnScreenOn(ringing)
+        if (Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(ringing)
+            setTurnScreenOn(ringing)
+        } else {
+            val flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            if (ringing) window.addFlags(flags) else window.clearFlags(flags)
+        }
         if (ringing) getSystemService(KeyguardManager::class.java).requestDismissKeyguard(this, null)
     }
 }

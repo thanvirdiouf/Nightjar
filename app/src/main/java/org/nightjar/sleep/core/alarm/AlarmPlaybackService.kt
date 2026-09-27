@@ -76,9 +76,22 @@ class AlarmPlaybackService : Service() {
                     setVolume(0.02f, 0.02f)
                 }
                 player = media
-                if (file != null) media.setDataSource(file.absolutePath) else media.setDataSource(this@AlarmPlaybackService, Uri.parse(settings.alarmToneUri))
-                media.setOnErrorListener { _, _, _ -> fail(token, "The selected alarm tone could not be played."); true }
-                withContext(Dispatchers.IO) { media.prepare() }
+                try {
+                    if (file != null) media.setDataSource(file.absolutePath) else media.setDataSource(this@AlarmPlaybackService, Uri.parse(settings.alarmToneUri))
+                    withContext(Dispatchers.IO) { media.prepare() }
+                } catch (e: Exception) {
+                    if (e is CancellationException || file != null) throw e
+                    media.reset()
+                    media.setAudioAttributes(attributes)
+                    media.setWakeMode(this@AlarmPlaybackService, PowerManager.PARTIAL_WAKE_LOCK)
+                    media.isLooping = true
+                    media.setVolume(0.02f, 0.02f)
+                    val fallback = withContext(Dispatchers.IO) { SynthAudio.file(this@AlarmPlaybackService, "Dawn") }
+                    media.setDataSource(fallback.absolutePath)
+                    withContext(Dispatchers.IO) { media.prepare() }
+                    app.runtime.notice.value = "The selected audio file was unavailable. Using Dawn for this alarm."
+                }
+                media.setOnErrorListener { _, _, _ -> fail(token, "Alarm playback stopped unexpectedly."); true }
                 media.start()
                 if (!app.alarms.confirmPlaybackStarted(token)) { stopPlayback(); return@launch }
                 app.runtime.alarm.value = app.runtime.alarm.value.copy(playing = media.isPlaying)

@@ -67,6 +67,7 @@ interface SleepDao {
     @Query("SELECT * FROM epochs WHERE sessionId = :id ORDER BY startTime") suspend fun epochs(id: Long): List<Epoch>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertEpoch(epoch: Epoch)
     @Update suspend fun updateEpochs(epochs: List<Epoch>)
+    @Query("SELECT * FROM noise_events ORDER BY timestamp") suspend fun allNoise(): List<NoiseEvent>
     @Query("SELECT * FROM noise_events WHERE sessionId = :id ORDER BY timestamp") fun observeNoise(id: Long): Flow<List<NoiseEvent>>
     @Query("SELECT * FROM noise_events WHERE sessionId = :id ORDER BY timestamp") suspend fun noise(id: Long): List<NoiseEvent>
     @Query("SELECT * FROM noise_events WHERE clipPath IS NOT NULL AND timestamp < :cutoff") suspend fun expiredClips(cutoff: Long): List<NoiseEvent>

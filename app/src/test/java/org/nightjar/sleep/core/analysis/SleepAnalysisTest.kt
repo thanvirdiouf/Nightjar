@@ -63,4 +63,25 @@ class SleepAnalysisTest {
         assertEquals(100f, metrics.deepPercent, 0.01f)
         assertEquals(0, metrics.awakenings)
     }
+    @Test fun quietIntervalsBeforeSustainedSleepRemainInAwakeTotal() {
+        val phases = listOf(SleepPhase.LIGHT, SleepPhase.LIGHT, SleepPhase.AWAKE) + List(3) { SleepPhase.LIGHT }
+        val metrics = SleepQualityCalculator.calculate(0, 180_000, epochs(phases))
+        assertEquals(90_000L, metrics.awakeMs)
+        assertEquals(180_000L, metrics.awakeMs + metrics.sleepMs + metrics.unknownMs)
+    }
+    @Test fun omittedGapCannotJoinTwoBriefAwakeRuns() {
+        val base = epochs(List(3) { SleepPhase.LIGHT } + List(2) { SleepPhase.AWAKE })
+        val separated = base.dropLast(1) + base.last().copy(startTime = 180_000)
+        val metrics = SleepQualityCalculator.calculate(0, 210_000, separated)
+        assertEquals(60_000L, metrics.unknownMs)
+        assertEquals(0, metrics.awakenings)
+    }
+    @Test fun overlappingInputCannotDoubleCountTime() {
+        val data = epochs(List(6) { SleepPhase.LIGHT })
+        val metrics = SleepQualityCalculator.calculate(0, 180_000, data + data)
+        assertEquals(180_000L, metrics.sleepMs)
+        assertEquals(0L, metrics.unknownMs)
+        assertEquals(1f, metrics.coverage, .0001f)
+    }
+
 }

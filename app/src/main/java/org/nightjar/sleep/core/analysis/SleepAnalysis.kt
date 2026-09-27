@@ -60,7 +60,23 @@ object SleepQualityCalculator {
     fun calculate(start: Long, end: Long, epochs: List<Epoch>, config: AnalysisConfig = AnalysisConfig()): SleepMetrics {
         val inBed = (end - start).coerceAtLeast(0)
         if (inBed == 0L) return SleepMetrics(null, null, 0, 0, 0, 0f, 0, 0f)
-        val ordered = epochs.sortedBy { it.startTime }
+        val ordered = mutableListOf<Epoch>()
+        var cursor = start
+        fun missing(until: Long) {
+            if (until > cursor) ordered += Epoch(sessionId = 0, startTime = cursor, durationMs = until - cursor,
+                intensity = 0f, activityScore = 0f, phase = SleepPhase.UNKNOWN.name, sampleCount = 0)
+        }
+        for (epoch in epochs.sortedBy { it.startTime }) {
+            if (epoch.durationMs <= 0) continue
+            val from = maxOf(start, cursor, epoch.startTime)
+            val until = minOf(end, epoch.startTime + epoch.durationMs)
+            if (until <= from) continue
+            missing(from)
+            val phase = epoch.phase.takeIf { name -> SleepPhase.entries.any { it.name == name } } ?: SleepPhase.UNKNOWN.name
+            ordered += epoch.copy(startTime = from, durationMs = until - from, phase = phase)
+            cursor = until
+        }
+        missing(end)
         fun duration(e: Epoch) = (min(e.startTime + e.durationMs, end) - max(e.startTime, start)).coerceAtLeast(0)
         val validMs = ordered.filter { it.phase != SleepPhase.UNKNOWN.name }.sumOf(::duration).coerceAtMost(inBed)
         val coverage = validMs.toFloat() / inBed
@@ -77,22 +93,24 @@ object SleepQualityCalculator {
         val afterOnset = if (onsetIndex >= 0) ordered.drop(onsetIndex) else emptyList()
         val sleepMs = afterOnset.filter { it.phase == SleepPhase.LIGHT.name || it.phase == SleepPhase.DEEP.name }.sumOf(::duration)
         val deepMs = afterOnset.filter { it.phase == SleepPhase.DEEP.name }.sumOf(::duration)
-        val awakeMs = ordered.filter { it.phase == SleepPhase.AWAKE.name }.sumOf(::duration)
+        val awakeMs = (validMs - sleepMs).coerceAtLeast(0)
         var awakenings = 0
         var awakeRunMs = 0L
         var hasSlept = false
         for (epoch in afterOnset) {
             when (epoch.phase) {
                 SleepPhase.LIGHT.name, SleepPhase.DEEP.name -> {
-                    if (hasSlept && awakeRunMs >= 60_000) awakenings++
                     hasSlept = true
                     awakeRunMs = 0
                 }
-                SleepPhase.AWAKE.name -> if (hasSlept) awakeRunMs += duration(epoch)
+                SleepPhase.AWAKE.name -> if (hasSlept) {
+                    val previous = awakeRunMs
+                    awakeRunMs += duration(epoch)
+                    if (previous < 60_000 && awakeRunMs >= 60_000) awakenings++
+                }
                 else -> { awakeRunMs = 0; hasSlept = false }
             }
         }
-        if (hasSlept && awakeRunMs >= 60_000) awakenings++
         // 60% sleep efficiency, 25% progress toward 7.5 hours, 15% continuity.
         // Unknown time stays in the efficiency denominator and never becomes sleep.
         val efficiency = sleepMs.toDouble() / inBed
