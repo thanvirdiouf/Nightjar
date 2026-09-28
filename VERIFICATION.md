@@ -85,3 +85,16 @@ not a claim that every supported Android release was tested. Physical overnight
 sensitivity, battery use and vendor restrictions remain to be measured on a phone.
 Sleep stages and scores are unvalidated estimates. No public repository, production
 signature, F-Droid acceptance or independently reproducible build is claimed.
+
+## Alarm tone preview update — 2026-09-28
+
+Two additional targeted AlarmTonePreviewTest device tests pass (15.21 seconds).
+They exercise all three built-in tones through the UI, automatic five-second
+stopping, replaying the selected tone, manual stopping without changing selection,
+rapid replacement during preparation, and actual MediaPlayer release when the
+Activity backgrounds. Previewing leaves the alarm plan unchanged.
+
+Debug/test APKs compile, install and run on Nightjar_Test_API_36. Android lint
+passes. Evidence: .local/verification/tone-preview-build.log and
+.local/verification/tone-preview-device-tests.log. These are additional focused
+checks; the 16-test baseline recorded above predates the preview feature.

@@ -17,7 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.nightjar.sleep.core.audio.AlarmTonePreview
 import org.nightjar.sleep.core.AppContainer
 import org.nightjar.sleep.core.alarm.AlarmPlaybackService
 import org.nightjar.sleep.core.audio.SynthAudio
@@ -26,6 +28,20 @@ import org.nightjar.sleep.core.audio.SynthAudio
     val settings by app.settings.flow.collectAsStateWithLifecycle()
     val plan by app.alarms.plan.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val preview = remember(context, scope) { AlarmTonePreview(context, scope) { app.runtime.notice.value = it } }
+    val previewTone by preview.playingTone.collectAsStateWithLifecycle()
+    val alarm by app.runtime.alarm.collectAsStateWithLifecycle()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(preview, lifecycle) {
+        lifecycle.addObserver(preview)
+        onDispose { lifecycle.removeObserver(preview); preview.stop() }
+    }
+    LaunchedEffect(alarm.ringing) { if (alarm.ringing) preview.stop() }
+    fun selectTone(tone: String) {
+        app.settings.update { it.copy(alarmTone = tone, alarmToneUri = "") }
+        if (!app.runtime.alarm.value.ringing) preview.play(tone, app.settings.current.alarmVolume)
+    }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (!granted) app.runtime.notice.value = "Enable notifications in Android settings to see alarm controls."
     }
@@ -66,14 +82,19 @@ import org.nightjar.sleep.core.audio.SynthAudio
             }
         }
         Panel("Your wake-up sound") {
+            Text("Tap a tone to select it and hear a 5-second preview.", style = MaterialTheme.typography.bodySmall)
             SynthAudio.alarmTones.forEach { tone ->
                 Row(Modifier.fillMaxWidth()) {
                     RadioButton(selected = settings.alarmTone == tone && settings.alarmToneUri.isBlank(),
-                        onClick = { app.settings.update { it.copy(alarmTone = tone, alarmToneUri = "") } })
-                    TextButton(onClick = { app.settings.update { it.copy(alarmTone = tone, alarmToneUri = "") } }) { Text(tone) }
+                        onClick = { selectTone(tone) })
+                    TextButton(onClick = { selectTone(tone) }) { Text(tone) }
                 }
             }
-            OutlinedButton(onClick = { audioPicker.launch(arrayOf("audio/*")) }) {
+            previewTone?.let { tone ->
+                Text("Previewing $tone", style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { preview.stop() }) { Text("Stop preview") }
+            }
+            OutlinedButton(onClick = { preview.stop(); audioPicker.launch(arrayOf("audio/*")) }) {
                 Text(if (settings.alarmToneUri.isBlank()) "Choose local audio file" else "Change selected audio file")
             }
             if (settings.alarmToneUri.isNotBlank()) Text("Local audio file selected", style = MaterialTheme.typography.bodySmall)

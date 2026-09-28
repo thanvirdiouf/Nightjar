@@ -57,6 +57,11 @@ Recording consent and external audio-file access are not restored.
 
 ## Alarm behavior
 
+Tap a built-in alarm tone to select it and hear a five-second preview at the
+configured app volume using Android's alarm stream. Selecting another tone replaces
+the preview. Stop preview, leaving the screen, backgrounding the app, or a ringing
+alarm stops playback. Previewing a tone does not arm an alarm.
+
 `AlarmManager.setAlarmClock` provides a deadline independent of tracking.
 Within the selected early window, fresh light/awake estimates can begin playback.
 The deadline is cancelled only after playback starts. A missing selected audio
