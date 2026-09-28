@@ -4,10 +4,15 @@ import android.media.MediaPlayer
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -55,6 +60,8 @@ import org.nightjar.sleep.core.storage.*
     val tags by remember(id) { app.repository.dao.observeTags(id) }.collectAsStateWithLifecycle(emptyList())
     val current = session
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var note by rememberSaveable(id) { mutableStateOf("") }
     var tagText by rememberSaveable(id) { mutableStateOf("") }
     var noteLoaded by rememberSaveable(id) { mutableStateOf(false) }
@@ -114,8 +121,10 @@ import org.nightjar.sleep.core.storage.*
         if (current.endTime != null) Panel("How did your night feel?") {
             OutlinedTextField(value = note, onValueChange = { note = it.take(2000) }, label = { Text("Sleep notes") }, minLines = 3, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = tagText, onValueChange = { tagText = it.take(500); tagsLoaded = true }, label = { Text("Tags, separated by commas") },
-                placeholder = { Text("caffeine, exercise, stress") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = { scope.launch {
+                placeholder = { Text("caffeine, exercise, stress") }, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(); keyboard?.hide() }))
+            Button(onClick = { focusManager.clearFocus(); keyboard?.hide(); scope.launch {
                 runCatching { app.repository.saveJournal(id, note, tagText.split(',').map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()) }
                     .onSuccess { app.runtime.notice.value = "Notes saved." }.onFailure { app.runtime.notice.value = it.message }
             } }) { Text("Save notes") }

@@ -52,11 +52,21 @@ class SleepRepository(private val context: Context, private val database: SleepD
             check(file == null || file.delete()) { "An expired recording could not be deleted." }
             dao.updateNoise(it.copy(clipPath = null))
         }
+        // A process interruption between writing a clip and its DB row can leave an orphan.
+        val referenced = dao.allNoise().mapNotNull { it.clipPath }.toSet()
+        File(context.filesDir, "recordings").listFiles()?.forEach { file ->
+            if (file.isFile && file.name !in referenced && file.lastModified() < now - retentionDays * 86_400_000L) {
+                check(file.delete()) { "An expired unreferenced recording could not be removed." }
+            }
+        }
     }
     suspend fun deleteSession(id: Long) = database.withTransaction {
         val session = dao.session(id) ?: return@withTransaction
         check(session.endTime != null) { "Stop the active session before deleting it." }
-        dao.noise(id).forEach { clipFile(it.clipPath)?.delete() }
+        dao.noise(id).forEach {
+            val file = clipFile(it.clipPath)
+            check(file == null || file.delete()) { "A recording could not be deleted. Please try again." }
+        }
         dao.deleteSession(session)
     }
 }

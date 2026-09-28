@@ -23,7 +23,7 @@ fi
 ./scripts/adb -s "$selected" install --no-incremental -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 mkdir -p .local/verification
 log=".local/verification/device-tests-$(date -u +%Y%m%dT%H%M%SZ).log"
-./scripts/adb -s "$selected" shell am instrument -w -r org.nightjar.sleep.test/androidx.test.runner.AndroidJUnitRunner | tee "$log"
+./scripts/adb -s "$selected" shell am instrument -w -r org.nightjar.sleep.test/org.nightjar.sleep.LifecycleProbe | tee "$log"
 if ! grep -Eq '^OK \([0-9]+ tests?\)' "$log"; then
   echo "Device tests did not report success. See $log" >&2
   exit 1

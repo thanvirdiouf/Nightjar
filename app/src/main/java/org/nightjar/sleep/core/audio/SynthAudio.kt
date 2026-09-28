@@ -2,6 +2,7 @@ package org.nightjar.sleep.core.audio
 
 import android.content.Context
 import java.io.*
+import java.util.UUID
 import kotlin.math.*
 import kotlin.random.Random
 
@@ -23,10 +24,17 @@ object WavFiles {
 object SynthAudio {
     val alarmTones = listOf("Dawn", "Soft bells", "Warm pulse")
     val ambientSounds = listOf("Rain", "Ocean", "White noise", "Pink noise", "Brown noise", "Fan")
-    fun file(context: Context, name: String): File {
+    @Synchronized fun file(context: Context, name: String): File {
         val selected = name.takeIf { it in alarmTones || it in ambientSounds } ?: "Dawn"
         val file = File(context.cacheDir, "sounds/" + selected.replace(" ", "_") + ".wav")
-        if (!file.isFile) WavFiles.write(file, samples(selected, 12))
+        // Publish only complete files; cancelled playback can leave generation running.
+        if (file.isFile && file.length() == 44L + 12L * 16_000 * 2) return file
+        val temporary = File(file.parentFile, ".${file.name}.${UUID.randomUUID()}.tmp")
+        try {
+            WavFiles.write(temporary, samples(selected, 12))
+            java.nio.file.Files.move(temporary.toPath(), file.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        } finally { temporary.delete() }
         return file
     }
     fun samples(name: String, seconds: Int = 12, rate: Int = 16_000): ShortArray {

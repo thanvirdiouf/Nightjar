@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Run explicit reboot/timezone/process tests on the dedicated Nightjar emulator."""
+from pathlib import Path
+import json, re, subprocess, time
+
+root = Path(__file__).resolve().parent.parent
+adb = str(root / "scripts" / "adb")
+logs = root / ".local" / "verification"
+logs.mkdir(parents=True, exist_ok=True)
+
+def command(args, timeout=90):
+    result = subprocess.run([adb, *args], cwd=root, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, timeout=timeout)
+    text = result.stdout.decode("utf-8", errors="replace").replace("\r", "")
+    if result.returncode:
+        raise RuntimeError(f"ADB command failed ({result.returncode}): {text}")
+    return text
+
+serial = None
+for line in command(["devices"]).splitlines()[1:]:
+    parts = line.split()
+    if len(parts) >= 2 and parts[1] == "device" and parts[0].startswith("emulator-"):
+        if command(["-s", parts[0], "emu", "avd", "name"]).splitlines()[0] == "Nightjar_Test_API_36":
+            serial = parts[0]
+            break
+if serial is None:
+    raise SystemExit("Start Nightjar_Test_API_36 before running these lifecycle tests.")
+
+def device(*args, timeout=90):
+    return command(["-s", serial, *args], timeout)
+
+def probe(operation, **arguments):
+    args = ["shell", "am", "instrument", "-w", "-r", "-e", "operation", operation]
+    for name, value in arguments.items():
+        args += ["-e", name, str(value)]
+    args += ["org.nightjar.sleep.test/org.nightjar.sleep.LifecycleProbe"]
+    output = device(*args, timeout=100)
+    (logs / f"probe-{operation}.log").write_text(output)
+    if f"Lifecycle probe passed: {operation}" not in output:
+        raise RuntimeError(output)
+    values = dict(re.findall(r"INSTRUMENTATION_RESULT: ([a-zA-Z]+)=(.*)", output))
+    print(f"Passed: {operation}", flush=True)
+    return values
+
+# Protect any manual alarm/session on the test device before the first mutation.
+prefs = device("shell", "run-as", "org.nightjar.sleep", "cat", "shared_prefs/nightjar-alarm.xml")
+if 'name="enabled" value="true"' in prefs:
+    raise SystemExit("Cancel the existing alarm before running lifecycle verification.")
+
+state = probe("arm-reboot")
+(logs / "lifecycle-state.json").write_text(json.dumps(state))
+print("Rebooting the dedicated emulator to verify alarm restoration.", flush=True)
+device("reboot")
+deadline = time.monotonic() + 240
+while time.monotonic() < deadline:
+    try:
+        if device("shell", "getprop", "sys.boot_completed", timeout=6).strip() == "1":
+            break
+    except (RuntimeError, subprocess.TimeoutExpired):
+        pass
+    time.sleep(2)
+else:
+    raise RuntimeError("The emulator is still booting; inspect it before retrying this workflow.")
+# Verify the boot receiver before instrumentation/application launch can reconcile.
+for attempt in range(25):
+    alarms = device("shell", "dumpsys", "alarm")
+    if "org.nightjar.sleep.ALARM_DEADLINE" in alarms:
+        (logs / "alarm-after-boot.txt").write_text(alarms)
+        break
+    time.sleep(2)
+else:
+    raise RuntimeError("The boot receiver did not restore the alarm before app launch.")
+probe("verify-alarm", target=state["target"])
+
+original_zone = device("shell", "getprop", "persist.sys.timezone").strip() or "Etc/UTC"
+new_zone = "Pacific/Honolulu" if original_zone != "Pacific/Honolulu" else "Europe/Paris"
+try:
+    state = probe("arm-local-time")
+    device("shell", "cmd", "alarm", "set-timezone", new_zone)
+    time.sleep(2)
+    probe("verify-local-time", oldToken=state["token"])
+finally:
+    device("shell", "cmd", "alarm", "set-timezone", original_zone)
+    probe("cleanup")
+
+state = probe("prepare-tracking")
+(logs / "lifecycle-state.json").write_text(json.dumps(state))
+device("shell", "am", "force-stop", "org.nightjar.sleep")
+time.sleep(2)
+device("shell", "am", "start", "-W", "-n", "org.nightjar.sleep/.MainActivity")
+for attempt in range(5):
+    device("shell", "uiautomator", "dump", "/sdcard/nightjar-recovery.xml")
+    hierarchy = device("shell", "cat", "/sdcard/nightjar-recovery.xml")
+    if "Resume session" in hierarchy:
+        (logs / "recovery-ui.xml").write_text(hierarchy)
+        break
+    time.sleep(1)
+else:
+    raise RuntimeError("The interrupted-session recovery control did not appear.")
+probe("verify-recovery", session=state["session"])
+device("shell", "rm", "/sdcard/nightjar-recovery.xml")
+print("Reboot, timezone and process recovery verification passed.", flush=True)

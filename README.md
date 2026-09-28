@@ -32,11 +32,14 @@ paths. Start the dedicated `Nightjar_Test_API_36` AVD and run:
 
 ```sh
 ./scripts/test-emulator
+./scripts/verify-lifecycle
 ```
 
 Device tests use actual emulator sensors and audio services, create their own
 temporary nights, then remove those nights. Do not run them during a user session
-or with a user alarm armed.
+or with a user alarm armed. The lifecycle script also reboots the dedicated AVD,
+temporarily changes and restores its timezone, and verifies recovery after
+force-stopping a test session. Run the main test script first to install its test runner.
 
 ## Privacy and data
 

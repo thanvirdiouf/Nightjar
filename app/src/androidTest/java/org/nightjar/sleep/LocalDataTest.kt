@@ -11,6 +11,8 @@ import org.nightjar.sleep.core.*
 import org.nightjar.sleep.core.storage.*
 import org.nightjar.sleep.core.audio.WavFiles
 import org.nightjar.sleep.core.audio.NoiseRecorder
+import org.nightjar.sleep.core.audio.SynthAudio
+import kotlinx.coroutines.*
 import kotlin.math.*
 import android.media.MediaPlayer
 import java.io.*
@@ -141,6 +143,34 @@ class LocalDataTest {
         repository.pruneClips(7)
         assertFalse(file.exists())
         assertNull(source.dao().noise(id).single().clipPath)
+    }
+
+    @Test fun concurrentSoundRequestsRepairATruncatedCacheFile() = runBlocking {
+        val damaged = File(context.cacheDir, "sounds/Fan.wav")
+        damaged.parentFile!!.mkdirs()
+        damaged.writeText("truncated")
+        val sizes = (1..4).map { async(Dispatchers.IO) { SynthAudio.file(context, "Fan").length() } }.awaitAll()
+        assertTrue(sizes.all { it == 384044L })
+        val player = MediaPlayer()
+        try { player.setDataSource(damaged.absolutePath); player.prepare(); assertEquals(12_000, player.duration) }
+        finally { player.release() }
+        assertTrue(damaged.parentFile!!.listFiles()!!.none { it.name.endsWith(".tmp") })
+    }
+    @Test fun retentionAlsoRemovesOldUnreferencedClips() = runBlocking {
+        val orphan = File(context.filesDir, "recordings/${UUID.randomUUID()}.wav")
+        clips += orphan
+        WavFiles.write(orphan, ShortArray(16_000))
+        assertTrue(orphan.setLastModified(System.currentTimeMillis() - 10 * 86_400_000L))
+        SleepRepository(context, source).pruneClips(7)
+        assertFalse(orphan.exists())
+    }
+
+    @Test fun malformedVolumeUsesASerializableDefault() {
+        for (value in listOf("NaN", "Infinity", "-Infinity")) {
+            val restored = AppSettings.fromJson(org.json.JSONObject().put("alarmVolume", value))
+            assertEquals(.8f, restored.alarmVolume, .0001f)
+            assertEquals(.8, restored.toJson().getDouble("alarmVolume"), .0001)
+        }
     }
 
 }

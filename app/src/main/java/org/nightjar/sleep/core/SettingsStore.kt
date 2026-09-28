@@ -44,7 +44,7 @@ data class AppSettings(
                 low, high, json.optBoolean("recordNoise", false),
                 json.optInt("retentionDays", 7).coerceIn(1, 90), json.optInt("alarmHour", 7).coerceIn(0, 23),
                 json.optInt("alarmMinute", 0).coerceIn(0, 59), json.optInt("wakeWindowMinutes", 30).coerceIn(0, 60),
-                json.optInt("rampSeconds", 30).coerceIn(5, 120), json.optDouble("alarmVolume", 0.8).toFloat().coerceIn(0.1f, 1f),
+                json.optInt("rampSeconds", 30).coerceIn(5, 120), json.optDouble("alarmVolume", 0.8).toFloat().takeIf { it.isFinite() }?.coerceIn(0.1f, 1f) ?: 0.8f,
                 json.optString("alarmTone", "Dawn"), json.optString("alarmToneUri", ""),
                 json.optInt("snoozeMinutes", 5).coerceIn(1, 30), json.optInt("soundTimerMinutes", 30).coerceIn(0, 180),
                 json.optBoolean("stopSoundsOnSleep", true)

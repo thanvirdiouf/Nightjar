@@ -42,6 +42,7 @@ class AppDeviceTest {
             compose.activity.startService(Intent(compose.activity, AlarmPlaybackService::class.java).setAction(AlarmPlaybackService.STOP))
             compose.activity.startService(Intent(compose.activity, SoundPlaybackService::class.java).setAction(SoundPlaybackService.STOP))
             app.alarms.cancel()
+            app.runtime.notice.value = null
             savedSettings?.let { app.settings.restore(it) }
             app.runtime.destination.value = "tonight"
         }
@@ -128,23 +129,28 @@ class AppDeviceTest {
         compose.onNodeWithText("Stop playback").performScrollTo().performClick()
         waitFor { !app.runtime.sound.value.playing }
     }
-    @Test fun deadlineSurvivesIdleWithTheActivityStopped() {
-        fun shell(command: String) {
+    @Test fun deadlineScheduledFromConfirmedIdleRingsWithoutActivity() {
+        fun shell(command: String): String =
             InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command).use { descriptor ->
-                java.io.FileInputStream(descriptor.fileDescriptor).use { it.readBytes() }
+                java.io.FileInputStream(descriptor.fileDescriptor).use { it.readBytes().toString(Charsets.UTF_8).trim() }
             }
-        }
         compose.runOnIdle {
             app.settings.update { it.copy(alarmToneUri = "", rampSeconds = 5) }
-            app.alarms.scheduleAt(System.currentTimeMillis() + 4_000, 0)
         }
         compose.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        val deepWasEnabled = shell("dumpsys deviceidle enabled deep") == "1"
         try {
+            if (!deepWasEnabled) shell("dumpsys deviceidle enable deep")
             shell("dumpsys deviceidle force-idle")
+            assertEquals("IDLE", shell("dumpsys deviceidle get deep"))
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                app.alarms.scheduleAt(System.currentTimeMillis() + 3_000, 0)
+            }
             waitFor(15_000) { app.runtime.alarm.value.playing }
             assertEquals(false, app.alarms.plan.value?.enabled)
         } finally {
             shell("dumpsys deviceidle unforce")
+            if (!deepWasEnabled) shell("dumpsys deviceidle disable deep")
             compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
         }
         compose.onNodeWithText("Dismiss").performClick()
@@ -166,6 +172,28 @@ class AppDeviceTest {
         assertFalse(app.alarms.requestFire(token))
         compose.onNodeWithText("Dismiss").performClick()
         waitFor { !app.runtime.alarm.value.ringing }
+    }
+
+    @Test fun ambientTimerExpiresAndSleepOnsetStopsPlayback() {
+        compose.runOnIdle {
+            app.settings.update { it.copy(soundTimerMinutes = 1, stopSoundsOnSleep = false) }
+            ContextCompat.startForegroundService(compose.activity, Intent(compose.activity, SoundPlaybackService::class.java)
+                .setAction(SoundPlaybackService.PLAY).putExtra("name", "Rain"))
+        }
+        waitFor(15_000) { app.runtime.sound.value.playing }
+        waitFor(70_000) { !app.runtime.sound.value.playing }
+        compose.runOnIdle {
+            app.settings.update { it.copy(soundTimerMinutes = 0, stopSoundsOnSleep = true, mode = SensingMode.ACCELEROMETER) }
+            ContextCompat.startForegroundService(compose.activity, Intent(compose.activity, SoundPlaybackService::class.java)
+                .setAction(SoundPlaybackService.PLAY).putExtra("name", "Ocean"))
+            ContextCompat.startForegroundService(compose.activity, Intent(compose.activity, TrackingForegroundService::class.java)
+                .setAction(TrackingForegroundService.START))
+        }
+        waitFor { app.runtime.tracking.value.running }
+        createdSessions += app.runtime.tracking.value.sessionId!!
+        waitFor(15_000) { app.runtime.sound.value.playing }
+        waitFor(105_000) { app.runtime.tracking.value.asleepEpochs >= 3 }
+        waitFor { !app.runtime.sound.value.playing }
     }
 
 }

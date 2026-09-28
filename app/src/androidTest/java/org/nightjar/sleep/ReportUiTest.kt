@@ -35,11 +35,11 @@ class ReportUiTest {
                 phase = if (i < 4) "LIGHT" else if (i < 10) "DEEP" else if (i < 12) "AWAKE" else "LIGHT", sampleCount = 150))
             app.repository.finish(id, start + 600_000)
         }
-        compose.runOnIdle { app.runtime.destination.value = "journal" }
+        compose.runOnIdle { app.runtime.notice.value = null; app.runtime.destination.value = "journal" }
     }
     @After fun cleanup() = runBlocking {
         ids.forEach { app.repository.deleteSession(it) }
-        compose.runOnIdle { app.settings.restore(settings); app.runtime.destination.value = "tonight" }
+        compose.runOnIdle { app.settings.restore(settings); app.runtime.notice.value = null; app.runtime.destination.value = "tonight" }
     }
     private fun screenshot(name: String) {
         val file = File(compose.activity.getExternalFilesDir(null), name)
@@ -54,7 +54,12 @@ class ReportUiTest {
         screenshot("report-test.png")
         compose.onNodeWithText("Sleep notes").performScrollTo().performTextInput("Slept after an evening walk")
         compose.onNodeWithText("Tags, separated by commas").performScrollTo().performTextInput("exercise, relaxed")
-        compose.onNodeWithText("Save notes").performScrollTo().performClick()
+        compose.onNodeWithText("Tags, separated by commas").performImeAction()
+        compose.onNodeWithText("Sleep notes").assertTextContains("Slept after an evening walk")
+        compose.onNodeWithText("Save notes").performScrollTo()
+        screenshot("notes-before-save.png")
+        compose.onNodeWithText("Save notes").performClick()
+        screenshot("notes-after-save.png")
         compose.waitUntil(5000) { runBlocking { app.repository.dao.session(ids.first())!!.note == "Slept after an evening walk" } }
         compose.onNodeWithText("Trends").performClick()
         compose.onNodeWithText("Over 3 nights").performScrollTo().assertIsDisplayed()
