@@ -5,3 +5,5 @@ Track a night, explore activity-based phase estimates, add notes and tags, and c
 Optional noise clips are recorded only after you opt in, stored locally, and removed according to your retention setting. Export CSV or JSON and make local backups.
 
 No accounts, ads, cloud uploads or internet permission. Sleep phase labels and quality scores are unvalidated estimates, not medical measurements or diagnosis.
+
+Free software under GNU GPL version 3 or later. Third-party libraries retain their own licenses.

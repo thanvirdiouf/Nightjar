@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Nightjar contributors
+
 package org.nightjar.sleep.ui
 
 import android.net.Uri

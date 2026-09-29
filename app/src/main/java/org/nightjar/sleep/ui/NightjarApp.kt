@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Nightjar contributors
+
 package org.nightjar.sleep.ui
 
 import android.Manifest
@@ -118,6 +121,7 @@ private val LightColors = lightColorScheme(
                     "alarm" -> AlarmScreen(app)
                     "sounds" -> SoundsScreen(app)
                     "settings" -> SettingsScreen(app)
+                    "licenses" -> LicensesScreen(app)
                     else -> TonightScreen(app) { permissionsAndStart() }
                 }
             }

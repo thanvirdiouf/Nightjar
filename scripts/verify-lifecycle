@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Nightjar contributors
 """Run explicit reboot/timezone/process tests on the dedicated Nightjar emulator."""
 from pathlib import Path
 import json, re, subprocess, time

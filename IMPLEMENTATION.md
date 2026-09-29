@@ -19,7 +19,7 @@ not requirements. Optional Wear OS and guided narration are not included.
 | Export and restore | CSV/JSON, local ZIP including retained clips, duplicate skipping, validation and rollback; data round-trip and malformed-input tests |
 | Interrupted tracking | Saved session recovery with unknown gaps; real force-stop/reopen/resume probe |
 | Privacy and offline use | No internet permission, cloud backup or proprietary service SDKs; manifest and dependency-lock audit |
-| Build and licensing | Apache-2.0, original assets, pinned/locked dependencies, lint, debug and optimized release builds |
+| Build and licensing | GPL-3.0-or-later, original assets, pinned/locked dependencies, lint, debug and optimized release builds |
 | Distribution preparation | Listing text and F-Droid recipe template; public repository, tag, production signing and submission remain owner-controlled release steps |
 
 See VERIFICATION.md for exact test scope and evidence. The dedicated

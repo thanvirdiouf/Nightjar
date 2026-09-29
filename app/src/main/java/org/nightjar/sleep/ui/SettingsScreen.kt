@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Nightjar contributors
+
 package org.nightjar.sleep.ui
 
 import android.content.Intent
@@ -65,7 +68,8 @@ import org.nightjar.sleep.core.analysis.SensingMode
             OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Open app settings") }
         }
         Panel("About Nightjar") {
-            Text("Original, open-source sleep tracking. Apache License 2.0. No accounts, ads, internet permission, or cloud uploads.")
+            Text("Original, open-source sleep tracking. GNU GPL version 3 or later. No accounts, ads, internet permission, or cloud uploads.")
+            TextButton(onClick = { app.runtime.destination.value = "licenses" }) { Text("Open-source licenses") }
             Text("Estimates are based on movement or sound and are not a medical measurement. Room stores your nights locally; generated ambient audio is original to Nightjar.", style = MaterialTheme.typography.bodySmall)
         }
     }

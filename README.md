@@ -1,7 +1,7 @@
 # Nightjar
 
 An original, offline Android sleep journal, activity tracker and smart alarm.
-Kotlin, Jetpack Compose and Room. Apache-2.0 licensed.
+Kotlin, Jetpack Compose and Room. GPL-3.0-or-later licensed.
 
 - Track mattress motion or microphone intensity using a foreground service.
 - View activity-based awake/light/deep estimates, nightly reports and 7/30-day trends.
@@ -79,3 +79,9 @@ behavior, real mattress sensitivity or clinical accuracy.
 See [F-DROID.md](F-DROID.md) for source publishing and a build recipe template.
 The repository currently has no public forge URL or release tag. Public publishing
 and an F-Droid submission are separate release steps.
+
+## License
+
+Original Nightjar code and assets use GPL-3.0-or-later. See [LICENSE](LICENSE)
+and [LICENSING.md](LICENSING.md) for the grant, third-party exceptions and source
+distribution obligations. Third-party libraries keep their own licenses.

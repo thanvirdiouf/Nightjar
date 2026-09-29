@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Nightjar contributors
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -23,7 +26,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
     testOptions { unitTests.isIncludeAndroidResources = true }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging { resources.merges += setOf("/META-INF/AL2.0", "/META-INF/LGPL2.1") }
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
@@ -53,3 +56,13 @@ dependencies {
 }
 
 dependencyLocking { lockAllConfigurations() }
+
+// Bundle the canonical repository license files without maintaining APK-only copies.
+val prepareLicenseAssets by tasks.registering(Sync::class) {
+    from(rootProject.file("LICENSE")) { rename { "GPL-3.0.txt" } }
+    from(rootProject.file("LICENSES")) { include("*.txt") }
+    from(rootProject.file("THIRD_PARTY_NOTICES.txt"))
+    into(layout.buildDirectory.dir("generated/licenseAssets/licenses"))
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/licenseAssets"))
+tasks.named("preBuild") { dependsOn(prepareLicenseAssets) }

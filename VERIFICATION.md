@@ -98,3 +98,26 @@ Debug/test APKs compile, install and run on Nightjar_Test_API_36. Android lint
 passes. Evidence: .local/verification/tone-preview-build.log and
 .local/verification/tone-preview-device-tests.log. These are additional focused
 checks; the 16-test baseline recorded above predates the preview feature.
+
+## GPL-3.0-or-later migration — verified 2026-09-29
+
+Original Nightjar code/assets, source headers, documentation, About text and
+F-Droid metadata now declare GPL-3.0-or-later. Third-party notices and the original
+Gradle wrapper headers/JAR are preserved. LICENSING.md documents the scope and
+corresponding-source obligations; this is not patent or ownership clearance.
+
+The scoped audit checked 112 locked debug/release runtime dependency coordinates,
+including metadata artifacts. All declare Apache-2.0; ListenableFuture inherits
+its declaration from guava-parent:26.0-android. The distinct embedded runtime
+license text found was also Apache-2.0. Details are recorded in
+THIRD_PARTY_NOTICES.txt and the local license-audit.json/dependency-notices.json.
+
+Debug and optimized release builds pass, and lint reports no errors. All three
+license documents in the debug APK, unsigned release APK, and development-signed
+release copy match the canonical repository files byte-for-byte. The release
+Settings entry and all three document selectors were exercised on the emulator;
+the GPL screen screenshot was visually inspected. No new sleep/alarm algorithm
+tests were needed for this license and About-screen change.
+
+Evidence: .local/verification/gpl-build.log, gpl-ui-check.log, gpl-licenses.png,
+gpl-third-party.xml and gpl-apache.xml.
