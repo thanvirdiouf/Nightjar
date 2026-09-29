@@ -20,13 +20,19 @@
   </tr>
 </table>
 
+## Get Nightjar
+
+Nightjar supports Android 8.0 and newer. Signed APKs and checksums will be
+available on [GitHub Releases](https://github.com/thanvirdiouf/Nightjar/releases)
+after the first release is published.
+
 ## Your data stays yours
 
 Nightjar works without internet access and has no account or cloud sync. Sleep observations remain on your device. Microphone audio is discarded unless you turn on local noise clips. You control how long those clips are kept, and deleting a night deletes its clips. Android cloud backup and device transfer are disabled for Nightjar. If you export data or create a backup, choose where to save it; exported files are not encrypted.
 
 Motion and sound **cannot measure sleep stages**. Nightjar's awake, light, and deep labels and sleep score are estimates, not medical measurements. See [how the estimates work](ALGORITHMS.md).
 
-Nightjar supports Android 8.0 and newer. Before relying on its alarm overnight, check your phone's alarm volume and battery settings and try it on your device.
+Before relying on its alarm overnight, check your phone's alarm volume and battery settings and try it on your device.
 
 ## Free software
 

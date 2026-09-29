@@ -99,7 +99,13 @@ clinical measurements; see [ALGORITHMS.md](ALGORITHMS.md).
 ## Distribution
 
 See [F-DROID.md](F-DROID.md) for source publishing and a build recipe template.
-The repository currently has no public forge URL or release tag. Public
-publishing and an F-Droid submission are separate release steps. See
+A GitHub remote is configured, but pushing the source, publishing a release tag,
+and submitting to F-Droid are separate steps. See
 [LICENSING.md](LICENSING.md) for third-party exceptions and source distribution
 obligations.
+
+## GitHub automation
+
+See [RELEASING.md](RELEASING.md) for CI, signing-secret setup, and tagged GitHub
+Releases. The local build and emulator workflows above remain available without
+GitHub.

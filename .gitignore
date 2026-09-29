@@ -22,3 +22,6 @@ keystore.properties
 
 # Local verification artifacts
 .local/
+
+# Locally packaged release assets
+/dist/
